@@ -85,7 +85,7 @@ int main(void)
 /* Try to test ADC.*/      
     //Delay(3000);
     SystemInit();
-    RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOD , ENABLE );
+    RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOE , ENABLE );
     GPIO_PIN_INIT();
     adc_configure();//Start configuration
     
@@ -95,12 +95,12 @@ int main(void)
       ConvertedValue = adc_convert();//Read the ADC converted value
       if ((ConvertedValue > 2000) && (ConvertedValue < 2500))
       {
-        GPIO_SetBits(GPIOD , GPIO_Pin_11);
+        GPIO_SetBits(GPIOE , GPIO_Pin_11);
         STM_EVAL_LEDOn(LED4);
         Delay(100);
       }
       else{
-        GPIO_ResetBits(GPIOD , GPIO_Pin_11);
+        GPIO_ResetBits(GPIOE , GPIO_Pin_11);
         STM_EVAL_LEDOff(LED4);
         Delay(100);
       }
@@ -147,14 +147,14 @@ int adc_convert(){
 void GPIO_PIN_INIT(void){
     GPIO_InitTypeDef GPIO_InitStructure;
     
-    GPIO_PinAFConfig(GPIOD, GPIO_PinSource11, GPIO_AF_TIM3);
+    GPIO_PinAFConfig(GPIOE, GPIO_PinSource11, GPIO_AF_TIM3);
     
     GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-    GPIO_Init( GPIOD, &GPIO_InitStructure ); 
+    GPIO_Init( GPIOE, &GPIO_InitStructure ); 
 }
 
 /**
