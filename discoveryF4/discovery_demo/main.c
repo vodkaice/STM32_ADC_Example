@@ -51,6 +51,7 @@ static uint32_t Demo_USBConfig(void);
 /* Private functions ---------------------------------------------------------*/
 int adc_convert();
 void adc_configure();
+void GPIO_PIN_INIT(void);
 
 /**
   * @brief  Main program.
@@ -60,7 +61,7 @@ void adc_configure();
 int main(void)
 {
   RCC_ClocksTypeDef RCC_Clocks;
-  
+
   /* Initialize LEDs and User_Button on STM32F4-Discovery --------------------*/
   STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_EXTI); 
   
@@ -82,16 +83,24 @@ int main(void)
     FLASH_ProgramWord(TESTRESULT_ADDRESS, ALLTEST_PASS);
 
 /* Try to test ADC.*/      
-  adc_configure();//Start configuration
-  
+    //Delay(3000);
+    SystemInit();
+    RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOD , ENABLE );
+    GPIO_PIN_INIT();
+    adc_configure();//Start configuration
+    
+    int i;
+
     while(1){//loop while the board is working
       ConvertedValue = adc_convert();//Read the ADC converted value
-      if (ConvertedValue > 2000)
+      if ((ConvertedValue > 2000) && (ConvertedValue < 2500))
       {
+        GPIO_SetBits(GPIOD , GPIO_Pin_11);
         STM_EVAL_LEDOn(LED4);
         Delay(100);
       }
       else{
+        GPIO_ResetBits(GPIOD , GPIO_Pin_11);
         STM_EVAL_LEDOff(LED4);
         Delay(100);
       }
@@ -135,12 +144,18 @@ int adc_convert(){
  return ADC_GetConversionValue(ADC1); //Return the converted data
 }
 
-/**
-  * @brief  Execute the demo application.
-  * @param  None
-  * @retval None
-  */
-
+void GPIO_PIN_INIT(void){
+    GPIO_InitTypeDef GPIO_InitStructure;
+    
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource11, GPIO_AF_TIM3);
+    
+    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init( GPIOD, &GPIO_InitStructure ); 
+}
 
 /**
   * @brief  Initializes the USB for the demonstration application.
@@ -157,13 +172,6 @@ static uint32_t Demo_USBConfig(void)
   
   return 0;
 }
-
-/**
-  * @brief  Configures the TIM Peripheral.
-  * @param  None
-  * @retval None
-  */
-
 
 /**
   * @brief  Inserts a delay time.
