@@ -53,6 +53,12 @@ int adc_convert();
 void adc_configure();
 void GPIO_PIN_INIT(void);
 
+inline int conv2temp(uint16_t value){
+  return ( ( ( ( value * 2960 ) / 4096 ) - 760 ) / ( 25 / 10 ) ) + 25;
+}
+
+//static uint16_t testing=10;
+
 /**
   * @brief  Main program.
   * @param  None
@@ -89,53 +95,54 @@ int main(void)
     GPIO_PIN_INIT();
     adc_configure();//Start configuration
     
-    int i;
+    int flag=0;
 
+    uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
     while(1){//loop while the board is working
-      ConvertedValue = adc_convert();//Read the ADC converted value
-      if ((ConvertedValue > 1500) && (ConvertedValue < 2500))
-      {
-        GPIO_SetBits(GPIOE , GPIO_Pin_11);
-        STM_EVAL_LEDOn(LED4);
-        Delay(100);
-      }
-      else{
-        GPIO_ResetBits(GPIOE , GPIO_Pin_11);
-        STM_EVAL_LEDOff(LED4);
-        Delay(100);
-      }
+      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+
+      ConvertedValue = conv2temp(adc_convert());//Read the ADC converted value
+      uint16_t sum=0;
+      
+      register int i;
+      for(i=0; i<12; ++i)
+        sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
+      GPIO_SetBits(GPIOE, sum);
+      
+      Delay(100);
     }
 
 /* Try to test ADC.*/
   }
   else{}
 }
-
+ 
 void adc_configure(){
- ADC_InitTypeDef ADC_init_structure; //Structure for adc confguration
- GPIO_InitTypeDef GPIO_initStructre; //Structure for analog input pin
- //Clock configuration
- RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,ENABLE);//The ADC1 is connected the APB2 peripheral bus thus we will use its clock source
- RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN,ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
- //Analog pin configuration
- GPIO_initStructre.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
- GPIO_initStructre.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
- GPIO_initStructre.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
- GPIO_Init(GPIOC,&GPIO_initStructre);//Affecting the port with the initialization structure configuration
- //ADC structure configuration
- ADC_DeInit();
- ADC_init_structure.ADC_DataAlign = ADC_DataAlign_Right;//data converted will be shifted to right
- ADC_init_structure.ADC_Resolution = ADC_Resolution_12b;//Input voltage is converted into a 12bit number giving a maximum value of 4096
- ADC_init_structure.ADC_ContinuousConvMode = ENABLE; //the conversion is continuous, the input data is converted more than once
- ADC_init_structure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;// conversion is synchronous with TIM1 and CC1 (actually I'm not sure about this one :/)
- ADC_init_structure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;//no trigger for conversion
- ADC_init_structure.ADC_NbrOfConversion = 1;//I think this one is clear :p
- ADC_init_structure.ADC_ScanConvMode = DISABLE;//The scan is configured in one channel
- ADC_Init(ADC1,&ADC_init_structure);//Initialize ADC with the previous configuration
- //Enable ADC conversion
- ADC_Cmd(ADC1,ENABLE);
- //Select the channel to be read from
- ADC_RegularChannelConfig(ADC1,ADC_Channel_10,1,ADC_SampleTime_144Cycles);
+  ADC_InitTypeDef ADC_init_structure; //Structure for adc confguration
+  GPIO_InitTypeDef GPIO_initStructre; //Structure for analog input pin
+  //Clock configuration
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,ENABLE);//The ADC1 is connected the APB2 peripheral bus thus we will use its clock source
+  RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN,ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
+  //Analog pin configuration
+  GPIO_initStructre.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
+  GPIO_initStructre.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
+  GPIO_initStructre.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
+  GPIO_Init(GPIOC,&GPIO_initStructre);//Affecting the port with the initialization structure configuration
+  //ADC structure configuration
+  ADC_DeInit();
+  ADC_init_structure.ADC_DataAlign = ADC_DataAlign_Right;//data converted will be shifted to right
+  ADC_init_structure.ADC_Resolution = ADC_Resolution_12b;//Input voltage is converted into a 12bit number giving a maximum value of 4096
+  ADC_init_structure.ADC_ContinuousConvMode = ENABLE; //the conversion is continuous, the input data is converted more than once
+  ADC_init_structure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;// conversion is synchronous with TIM1 and CC1 (actually I'm not sure about this one :/)
+  ADC_init_structure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;//no trigger for conversion
+  ADC_init_structure.ADC_NbrOfConversion = 1;//I think this one is clear :p
+  ADC_init_structure.ADC_ScanConvMode = DISABLE;//The scan is configured in one channel
+  ADC_Init(ADC1,&ADC_init_structure);//Initialize ADC with the previous configuration
+ 
+  ADC_TempSensorVrefintCmd(ENABLE);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_144Cycles);
+  ADC_Cmd(ADC1,ENABLE);
+ 
 }
 
 int adc_convert(){
@@ -147,41 +154,14 @@ int adc_convert(){
 void GPIO_PIN_INIT(void){
     GPIO_InitTypeDef GPIO_InitStructure;
     
-    GPIO_PinAFConfig(GPIOE, GPIO_PinSource11, GPIO_AF_TIM3);
+    GPIO_PinAFConfig(GPIOE, GPIO_PinSource3|GPIO_PinSource4|GPIO_PinSource5|GPIO_PinSource6|GPIO_PinSource7|GPIO_PinSource8|GPIO_PinSource9|GPIO_PinSource10|GPIO_PinSource11|GPIO_PinSource12|GPIO_PinSource13|GPIO_PinSource14, GPIO_AF_TIM3);
     
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
     GPIO_Init( GPIOE, &GPIO_InitStructure ); 
-}
-
-void ADC1_Config(void)
-{
-  ADC_InitTypeDef       ADC_InitStructure;
-  ADC_CommonInitTypeDef ADC_CommonInitStructure;
-  DMA_InitTypeDef       DMA_InitStructure;
-
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-  ADC_DeInit();
-  ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度为12位           
-  ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //扫描转换模式失能
-  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //连续转换使能
-  ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部触发，软件触发转换
-  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
-  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //数据右对齐，低字节对齐
-  ADC_InitStructure.ADC_NbrOfConversion = 1;    //规定了顺序进行规则转换的ADC通道的数目
-  ADC_Init(ADC1, &ADC_InitStructure);      
-  ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent; //独立模式
-  ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分频为4，f(ADC)=21M
-//  ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能DMA_MODE
-  ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_20Cycles;//两次采样间隔20个周期
-  ADC_CommonInit(&ADC_CommonInitStructure);
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_480Cycles);//规则通道配置，1表示规则组采样顺序
-  ADC_TempSensorVrefintCmd(ENABLE);//使能温度传感器的基准电源 
-  ADC_Cmd(ADC1, ENABLE);       //使能ADC1
 }
 
 /**
