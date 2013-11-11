@@ -93,7 +93,7 @@ int main(void)
 
     while(1){//loop while the board is working
       ConvertedValue = adc_convert();//Read the ADC converted value
-      if ((ConvertedValue > 2000) && (ConvertedValue < 2500))
+      if ((ConvertedValue > 1500) && (ConvertedValue < 2500))
       {
         GPIO_SetBits(GPIOE , GPIO_Pin_11);
         STM_EVAL_LEDOn(LED4);
@@ -110,7 +110,7 @@ int main(void)
   }
   else{}
 }
- 
+
 void adc_configure(){
  ADC_InitTypeDef ADC_init_structure; //Structure for adc confguration
  GPIO_InitTypeDef GPIO_initStructre; //Structure for analog input pin
@@ -155,6 +155,33 @@ void GPIO_PIN_INIT(void){
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
     GPIO_Init( GPIOE, &GPIO_InitStructure ); 
+}
+
+void ADC1_Config(void)
+{
+  ADC_InitTypeDef       ADC_InitStructure;
+  ADC_CommonInitTypeDef ADC_CommonInitStructure;
+  DMA_InitTypeDef       DMA_InitStructure;
+
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+  ADC_DeInit();
+  ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度为12位           
+  ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //扫描转换模式失能
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //连续转换使能
+  ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部触发，软件触发转换
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //数据右对齐，低字节对齐
+  ADC_InitStructure.ADC_NbrOfConversion = 1;    //规定了顺序进行规则转换的ADC通道的数目
+  ADC_Init(ADC1, &ADC_InitStructure);      
+  ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent; //独立模式
+  ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分频为4，f(ADC)=21M
+//  ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能DMA_MODE
+  ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_20Cycles;//两次采样间隔20个周期
+  ADC_CommonInit(&ADC_CommonInitStructure);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_480Cycles);//规则通道配置，1表示规则组采样顺序
+  ADC_TempSensorVrefintCmd(ENABLE);//使能温度传感器的基准电源 
+  ADC_Cmd(ADC1, ENABLE);       //使能ADC1
 }
 
 /**
