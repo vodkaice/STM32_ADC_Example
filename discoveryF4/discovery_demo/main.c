@@ -1,3 +1,4 @@
+
 /* Reference to stm32 discovery demo example.*/
 
 /* Includes ------------------------------------------------------------------*/
@@ -63,39 +64,39 @@ inline int conv2temp(uint16_t value){
 void GPIO_Config(void)
 {
 GPIO_InitTypeDef GPIO_InitStructure;
-/* 使能GPIOC\GPIOF\GPIOG时钟*/
+/* 使能GPIOC\GPIOF\GPIOG時鐘*/
 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOE | RCC_AHB1Periph_GPIOG | RCC_AHB1Periph_GPIOF, ENABLE);
 GPIO_StructInit(&GPIO_InitStructure);
-/* 初始化GPIOG的Pin_6为LED输出 */
-GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;     //指定第六引脚
-GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;    //模式为输出
-GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;   //频率为快速
-//GPIO_Init(GPIOG, &GPIO_InitStructure);      //调用IO初始化函数
-GPIO_Init(GPIOE, &GPIO_InitStructure);      //调用IO初始化函数
+/* 初始化GPIOG的Pin_6為LED輸出 */
+GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;     //指定第六引腳
+GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;    //模式為輸出
+GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;   //頻率為快速
+//GPIO_Init(GPIOG, &GPIO_InitStructure);      //調用IO初始化函數
+GPIO_Init(GPIOE, &GPIO_InitStructure);      //調用IO初始化函數
 }
 
 void ADC_Config(void)
 {
 ADC_InitTypeDef ADC_InitStructure;
 ADC_CommonInitTypeDef ADC_CommonInitStructure;
-//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //开ADC时钟
+//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //開ADC時鐘
 RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);//ADC1 is connected to APB2 peripheral bus
 RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
 ADC_DeInit();
-ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度为12位           
-ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //扫描转换模式失能,单通道不用
-ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;  //连续转换使能
-ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部触发，软件触发转换
+ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度為12位           
+ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //掃瞄轉換模式失能,單通道不用
+ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //連續轉換使能
+ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部觸發，軟件觸發轉換
 ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
-ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //数据右对齐，低字节对齐
-ADC_InitStructure.ADC_NbrOfConversion = 1;    //规定了顺序进行规则转换的ADC通道的数目
+ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //數據右對齊，低位元組對齊
+ADC_InitStructure.ADC_NbrOfConversion = 1;    //規定了順序進行規則轉換的ADC通道的數目
 ADC_Init(ADC1, &ADC_InitStructure);      
-ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;    //独立模式
-ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分频为4，f(ADC3)=21M
+ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;    //獨立模式
+ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分頻為4，f(ADC3)=21M
 ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能DMA_MODE
-ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;//两次采样间隔5个周期
+ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;//兩次採樣間隔5個週期
 ADC_CommonInit(&ADC_CommonInitStructure);
-ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); //规则通道配置，1表示规则组采样顺序
+ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); //規則通道配置，1表示規則組採樣順序
 ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
 ADC_Cmd(ADC1, ENABLE);  //使能ADC3
 }
@@ -103,12 +104,12 @@ ADC_Cmd(ADC1, ENABLE);  //使能ADC3
 void NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
-  /* ADC中断配置 */
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);        //嵌套优先级分组为 1
-  NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;           //嵌套通道为ADC_IRQn
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; //抢占优先级为 1
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;    //响应优先级为 2
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //通道中断使能
+  /* ADC中斷配置 */
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);        //嵌套優先級分組為 1
+  NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;           //嵌套通道為ADC_IRQn
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; //搶佔優先級為 1
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;    //響應優先級為 2
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //通道中斷使能
   NVIC_Init(&NVIC_InitStructure);
 }
 
@@ -117,11 +118,11 @@ void DMA2_Stream0_IRQHandler(void)
     if (DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0) != RESET)
      {
       DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0);
-      /*添加用户代码*/
+      /*添加用戶代碼*/
      }
 }
-/**名称：ADC看门狗中断服务程序
-  *作用：ADC输入超过界限产生中断，并点亮LED
+/**名稱：ADC看門狗中斷服務程序
+  *作用：ADC輸入超過界限產生中斷，並點亮LED
   */
 volatile int count_interrupt = 10;
 void ADC_IRQHandler(void)
@@ -186,13 +187,13 @@ int main(void)
     GPIO_PIN_INIT();
     ADC_Config();
     NVIC_Config();
-    GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
+    GPIO_ResetBits(GPIOG, GPIO_Pin_6); //關閉LED
+    ADC_SoftwareStartConv(ADC1);
     
     while (1)
      {
       int o=count_interrupt;      
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-      ADC_SoftwareStartConv(ADC1);
       ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
       while(count_interrupt==o);
       ConvertedValue = ADC_GetConversionValue(ADC1);
