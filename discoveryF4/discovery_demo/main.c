@@ -84,8 +84,8 @@ RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE);//Clock for the ADC port!! D
 ADC_DeInit();
 ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度为12位           
 ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //扫描转换模式失能,单通道不用
-ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //连续转换使能
-ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_Rising; //不用外部触发，软件触发转换
+ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;  //连续转换使能
+ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部触发，软件触发转换
 ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
 ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //数据右对齐，低字节对齐
 ADC_InitStructure.ADC_NbrOfConversion = 1;    //规定了顺序进行规则转换的ADC通道的数目
@@ -123,17 +123,9 @@ void DMA2_Stream0_IRQHandler(void)
 /**名称：ADC看门狗中断服务程序
   *作用：ADC输入超过界限产生中断，并点亮LED
   */
-int count_interrupt = 0;
+volatile int count_interrupt = 10;
 void ADC_IRQHandler(void)
 {
-  ConvertedValue = ADC_GetConversionValue(ADC1);
-  /*if ( ConvertedValue > 2000 ){
-    GPIO_SetBits(GPIOE,GPIO_Pin_6);
-  }
-  else{
-    GPIO_ResetBits(GPIOE,GPIO_Pin_6);
-  }*/
-  count_interrupt++;
   uint16_t sum = 0;
       
   register int i;
@@ -145,16 +137,9 @@ void ADC_IRQHandler(void)
   {
     GPIO_SetBits(GPIOE, sum);
   }
-  //GPIO_SetBits(GPIOE, sum);
- /* if ( (count_interrupt % 2) == 0)
-  {
-    GPIO_SetBits(GPIOE, sum);
-  }
-  else{
-    GPIO_ResetBits(GPIOE, sum);
-  }
-*/
-  Delay(10);
+  Delay(100);
+  GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+  Delay(100);
 }
  
 
@@ -205,7 +190,9 @@ int main(void)
      {      
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       ADC_SoftwareStartConv(ADC1);
-      //Delay(1);
+      ConvertedValue = ADC_GetConversionValue(ADC1);
+      //Delay(100);
+
      }
 
 /* Try to test ADC.*/
