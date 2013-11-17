@@ -96,7 +96,7 @@ ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能
 ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;//两次采样间隔5个周期
 ADC_CommonInit(&ADC_CommonInitStructure);
 ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); //规则通道配置，1表示规则组采样顺序
-ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); //使能ADC转换结束中断
+ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
 ADC_Cmd(ADC1, ENABLE);  //使能ADC3
 }
 
@@ -126,6 +126,7 @@ void DMA2_Stream0_IRQHandler(void)
 volatile int count_interrupt = 10;
 void ADC_IRQHandler(void)
 {
+ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
   uint16_t sum = 0;
       
   register int i;
@@ -137,7 +138,9 @@ void ADC_IRQHandler(void)
   {
     GPIO_SetBits(GPIOE, sum);
   }
-//  Delay(100);
+  count_interrupt--;
+  return;
+  Delay(100);
   GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
 //  Delay(100);
 }
@@ -186,10 +189,14 @@ int main(void)
     GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
     
     while (1)
-     {      
+     {
+      int o=count_interrupt;      
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       ADC_SoftwareStartConv(ADC1);
+      ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+      while(count_interrupt==o);
       ConvertedValue = ADC_GetConversionValue(ADC1);
+      Delay(300);
      }
 
 /* Try to test ADC.*/
