@@ -25,6 +25,7 @@
  
 uint16_t ADCConvertedValues[BUFFERSIZE];
 __IO uint16_t ADCoverVaule;
+uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -71,57 +72,37 @@ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;    //模式为输出
 GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;   //频率为快速
 //GPIO_Init(GPIOG, &GPIO_InitStructure);      //调用IO初始化函数
 GPIO_Init(GPIOE, &GPIO_InitStructure);      //调用IO初始化函数
-/* 初始化GPIOG的Pin_9为模拟量输入 */
-GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
-GPIO_Init(GPIOF, &GPIO_InitStructure);
-/* GPIO引脚复用功能设置 */
-//GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_USART6);//这相当于M3的开启复用时钟，只配置复用的引脚，
-//GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_USART6);//               
 }
 
 void ADC_Config(void)
 {
 ADC_InitTypeDef ADC_InitStructure;
 ADC_CommonInitTypeDef ADC_CommonInitStructure;
-RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE); //开ADC时钟
+//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //开ADC时钟
+RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);//ADC1 is connected to APB2 peripheral bus
+RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
 ADC_DeInit();
 ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度为12位           
 ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //扫描转换模式失能,单通道不用
 ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //连续转换使能
-ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部触发，软件触发转换
+ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_Rising; //不用外部触发，软件触发转换
 ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
 ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //数据右对齐，低字节对齐
 ADC_InitStructure.ADC_NbrOfConversion = 1;    //规定了顺序进行规则转换的ADC通道的数目
-ADC_Init(ADC3, &ADC_InitStructure);      
+ADC_Init(ADC1, &ADC_InitStructure);      
 ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;    //独立模式
 ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分频为4，f(ADC3)=21M
 ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能DMA_MODE
 ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;//两次采样间隔5个周期
 ADC_CommonInit(&ADC_CommonInitStructure);
-ADC_RegularChannelConfig(ADC3, ADC_Channel_7, 1, ADC_SampleTime_15Cycles); //规则通道配置，1表示规则组采样顺序
-//ADC_ITConfig(ADC3, ADC_IT_EOC, ENABLE); //使能ADC转换结束中断
-ADC_Cmd(ADC3, ENABLE);  //使能ADC3
-/*********************ADC看门狗配置***************************/
-ADC_AnalogWatchdogCmd(ADC3, ADC_AnalogWatchdog_SingleRegEnable);
-ADC_AnalogWatchdogThresholdsConfig(ADC3, 0x0E8B, 0x0555);  //阈值设置。高：3V 低：1V
-ADC_AnalogWatchdogSingleChannelConfig(ADC3, ADC_Channel_7);
-ADC_ITConfig(ADC3, ADC_IT_AWD, ENABLE);
-ADC_DMACmd(ADC3, ENABLE);   //使能ADC3的DMA  
-ADC_DMARequestAfterLastTransferCmd(ADC3, ENABLE); //单通道模式下上次转换完成后DMA请求允许，也就是持续DMA
+ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); //规则通道配置，1表示规则组采样顺序
+ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); //使能ADC转换结束中断
+ADC_Cmd(ADC1, ENABLE);  //使能ADC3
 }
 
 void NVIC_Config()
 {
-/* DMA中断配置 */
   NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);        //嵌套优先级分组为 1
-  NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream0_IRQn;   //嵌套通道为DMA2_Stream0_IRQn
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; //抢占优先级为 1
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;    //响应优先级为 0
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //通道中断使能
-  NVIC_Init(&NVIC_InitStructure);
   /* ADC中断配置 */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);        //嵌套优先级分组为 1
   NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;           //嵌套通道为ADC_IRQn
@@ -129,32 +110,6 @@ void NVIC_Config()
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;    //响应优先级为 2
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //通道中断使能
   NVIC_Init(&NVIC_InitStructure);
-}
-
-void DMA_Config(void)
-{
-  DMA_InitTypeDef DMA_InitStructure;
-  /*首先开DMA2时钟，由407参考手册-RM0090-Reference manual
-   *165页可知，UASRT6与DMA2映射，而且DMA2挂载在AHB1时钟总线上*/
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-  DMA_DeInit(DMA2_Stream0);
-  DMA_StructInit( &DMA_InitStructure);
-  DMA_InitStructure.DMA_Channel = DMA_Channel_2;           //选择Channel_2
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)ADC3_DR_Addr; //数据传输的外设首地址，详解见上
-  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADCoverVaule;  //自己定义待发送数组的首地址，要强制转换为32位
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;    //数据传输方向选择为外设到内存
-  DMA_InitStructure.DMA_BufferSize = 1;                      //传输数据大小为1，单位由以下确定，大小要配合定义的数组类型和外设数据类型
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable; //外设地址寄存器自动增加禁止，因为这里只用到了DR数据寄存器
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;    //内存地址自增不允许
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord; //外设的数据大小，因为ADC6_DR数据寄存器为16为，故选HalfWord
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;  //这里也选Byte
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;       //DMA传输模式为Circular,将会循环传输
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High; //优先级为High
-  DMA_Init(DMA2_Stream0, &DMA_InitStructure);
-  DMA_Cmd(DMA2_Stream0, ENABLE);      //使能DMA2_Stream0通道
-  /* DMA中断开 */
-  DMA_ITConfig(DMA2_Stream6, DMA_IT_TC, ENABLE);
-  DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
 }
 
 void DMA2_Stream0_IRQHandler(void)
@@ -168,16 +123,38 @@ void DMA2_Stream0_IRQHandler(void)
 /**名称：ADC看门狗中断服务程序
   *作用：ADC输入超过界限产生中断，并点亮LED
   */
+int count_interrupt = 0;
 void ADC_IRQHandler(void)
 {
- GPIO_SetBits(GPIOE,GPIO_Pin_6);
-    if (ADC_GetITStatus(ADC3, ADC_IT_AWD) == SET)
-     {
-      ADC_ClearITPendingBit(ADC3, ADC_IT_AWD);
-      ADC_Cmd(ADC3, DISABLE);
-     }
+  ConvertedValue = ADC_GetConversionValue(ADC1);
+  /*if ( ConvertedValue > 2000 ){
+    GPIO_SetBits(GPIOE,GPIO_Pin_6);
+  }
+  else{
+    GPIO_ResetBits(GPIOE,GPIO_Pin_6);
+  }*/
+  count_interrupt++;
+  uint16_t sum = 0;
+      
+  register int i;
+  for(i=0; i<12; ++i)
+    sum|=(count_interrupt & (1 << i)?USING_PIN[i]:0);
+    //sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
+  
+  if (count_interrupt >0)
+  {
+    GPIO_SetBits(GPIOE, sum);
+  }
+  //GPIO_SetBits(GPIOE, sum);
+ /* if ( (count_interrupt % 2) == 0)
+  {
+    GPIO_SetBits(GPIOE, sum);
+  }
+  else{
+    GPIO_ResetBits(GPIOE, sum);
+  }
+*/
   Delay(10);
-  //GPIO_ResetBits(GPIOE,GPIO_Pin_6);
 }
  
 
@@ -216,46 +193,20 @@ int main(void)
     SystemInit();
     RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOE , ENABLE );
     GPIO_PIN_INIT();
-    adc_configure();//Start configuration
+    adc_configure();
     GPIO_Config();
-    ADC_Config();
-    DMA_Config();
-    NVIC_Config();
-    //GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
-    ADC_SoftwareStartConv(ADC3);     //如果不是外部触发则必须软件开始转换
-
-    while (1)
-     {
-      //Delay(0x0ffffff);
-      //printf("size of int is %d \n", sizeof(int));  //测试可知32位系统的int占4个字节
-      //printf("ADCoverVaule=%04X VolVaule=%d mV\n", ADCoverVaule, ADCoverVaule*3300/4096);  //串口输出电压值
-     /*因为DMA工作是独立于CPU之外的，所以在DMA工作的同时CPU可以做其他事*/
-     }
-
-
-/* Try to test ADC.
-    //Delay(3000);
-    SystemInit();
-    RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOE , ENABLE );
     GPIO_PIN_INIT();
-    adc_configure();//Start configuration
+    ADC_Config();
+    NVIC_Config();
+    GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
+    //ADC_SoftwareStartConv(ADC1);     //如果不是外部触发则必须软件开始转换
     
-    int flag=0;
-
-    uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
-    while(1){//loop while the board is working
+    while (1)
+     {      
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-
-      ConvertedValue = conv2temp(adc_convert());//Read the ADC converted value
-      uint16_t sum=0;
-      
-      register int i;
-      for(i=0; i<12; ++i)
-        sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
-      GPIO_SetBits(GPIOE, sum);
-      
-      Delay(100);
-    }
+      ADC_SoftwareStartConv(ADC1);
+      //Delay(1);
+     }
 
 /* Try to test ADC.*/
   }
