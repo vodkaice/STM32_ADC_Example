@@ -137,9 +137,9 @@ void ADC_IRQHandler(void)
   {
     GPIO_SetBits(GPIOE, sum);
   }
-  Delay(100);
+//  Delay(100);
   GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-  Delay(100);
+//  Delay(100);
 }
  
 
@@ -191,8 +191,6 @@ int main(void)
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       ADC_SoftwareStartConv(ADC1);
       ConvertedValue = ADC_GetConversionValue(ADC1);
-      //Delay(100);
-
      }
 
 /* Try to test ADC.*/
