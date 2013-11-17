@@ -184,7 +184,6 @@ int main(void)
     ADC_Config();
     NVIC_Config();
     GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
-    //ADC_SoftwareStartConv(ADC1);     //如果不是外部触发则必须软件开始转换
     
     while (1)
      {      
