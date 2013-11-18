@@ -55,6 +55,8 @@ int adc_convert();
 void adc_configure();
 void GPIO_PIN_INIT(void);
 
+uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
+
 inline int conv2temp(uint16_t value){
 	return ( ( ( ( value * 2960 ) / 4096 ) - 760 ) / ( 25 / 10 ) ) + 25;
 }
@@ -102,15 +104,7 @@ void ADC_Config(void)
 	ADC_CommonInit(&ADC_CommonInitStructure);
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_7, 1, ADC_SampleTime_15Cycles); //规则通道配置，1表示规则组采样顺序
 	ADC_Cmd(ADC3, ENABLE);  //使能ADC3
-	/*********************ADC看门狗配置***************************/
-	ADC_AnalogWatchdogCmd(ADC3, ADC_AnalogWatchdog_SingleRegEnable);
-	ADC_AnalogWatchdogThresholdsConfig(ADC3, 0x0E8B, 0x0555);  //阈值设置。高：3V 低：1V
-	ADC_AnalogWatchdogSingleChannelConfig(ADC3, ADC_Channel_7);
-	
-	ADC_DMACmd(ADC3, ENABLE);   //使能ADC3的DMA  
-	ADC_DMARequestAfterLastTransferCmd(ADC3, ENABLE); //单通道模式下上次转换完成后DMA请求允许，也就是持续DMA
 
-	ADC_ITConfig(ADC3, ADC_IT_AWD, ENABLE);
 	ADC_ITConfig(ADC3, ADC_IT_EOC, ENABLE); //使能ADC转换结束中断
 }
 
@@ -173,20 +167,13 @@ void DMA2_Stream0_IRQHandler(void)
  */
 void ADC_IRQHandler(void)
 {
-	if (ADC_GetITStatus(ADC3, ADC_IT_AWD) == SET)
-	{
-		GPIO_SetBits(GPIOE, GPIO_Pin_7);
-		ADC_ClearITPendingBit(ADC3, ADC_IT_AWD);
-		//ADC_Cmd(ADC3, DISABLE);
-	}
 
-
+	ADC_ITConfig(ADC3, ADC_IT_EOC, DISABLE);
 	if (ADC_GetITStatus(ADC3, ADC_IT_EOC) != RESET){
 		ADC_ClearITPendingBit(ADC3, ADC_IT_EOC);
-		GPIO_SetBits(GPIOE, GPIO_Pin_6);
 	}
-	Delay(10);
-	//GPIO_ResetBits(GPIOE,GPIO_Pin_6);
+
+	ConvertedValue=ADC_GetConversionValue(ADC1); //Return the converted data
 }
 
 
@@ -231,21 +218,19 @@ int main(void)
 		DMA_Config();
 		NVIC_Config();
 		//GPIO_ResetBits(GPIOG, GPIO_Pin_6); //关闭LED
-		ADC_SoftwareStartConv(ADC3);     //如果不是外部触发则必须软件开始转换
-uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
+		//ADC_SoftwareStartConv(ADC3);     //如果不是外部触发则必须软件开始转换
 		while (1)
 		{
+			
 			GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-			ConvertedValue=ADCoverValue;
-			uint16_t sum=0;
 			register int i;
-			for(i=0; i<12; ++i)
-				sum|=(5 & (1 << i)?USING_PIN[i]:0);
+			uint16_t sum=0,temp=ConvertedValue;
+			for(i=0; i<12; ++i){
+				sum|=(ConvertedValue>>i & 0x1)? USING_PIN[i]: 0;
+			}
 			GPIO_SetBits(GPIOE, sum);
+			ADC_ITConfig(ADC3, ADC_IT_EOC, ENABLE);
 			Delay(100);
-			//printf("size of int is %d \n", sizeof(int));  //测试可知32位系统的int占4个字节
-			//printf("ADCoverVaule=%04X VolVaule=%d mV\n", ADCoverVaule, ADCoverVaule*3300/4096);  //串口输出电压值
-			/*因为DMA工作是独立于CPU之外的，所以在DMA工作的同时CPU可以做其他事*/
 		}
 
 
