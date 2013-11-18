@@ -53,7 +53,6 @@ static uint32_t Demo_USBConfig(void);
 //static void TIM4_Config(void);
 
 /* Private functions ---------------------------------------------------------*/
-void GPIO_Config(void);
 
 inline int conv2temp(uint16_t value){
   return ( ( ( ( value * 2960 ) / 4096 ) - 760 ) / ( 25 / 10 ) ) + 25;
