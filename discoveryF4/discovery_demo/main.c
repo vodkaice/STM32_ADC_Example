@@ -146,8 +146,8 @@ void ADC_IRQHandler(void)
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
 
-  int flag=0;
-  if(count%5==0){
+  static int flag=0;
+  if(count%3==0){
 	if(flag==0)
 		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
 	else
