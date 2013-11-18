@@ -154,33 +154,30 @@ int main(void)
 {
   RCC_ClocksTypeDef RCC_Clocks;
   
-  /* SysTick end of count event each 10ms */
+  /* Configure SysTick */
   RCC_GetClocksFreq(&RCC_Clocks);
   SysTick_Config(RCC_Clocks.HCLK_Frequency / 100);
+
+  while(TimingDelay);
+
+  /* Write PASS code at last word in the flash memory */
+  FLASH_ProgramWord(TESTRESULT_ADDRESS, ALLTEST_PASS);
+
+  SystemInit();
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+  GPIO_Output_Config();
+  GPIO_Input_Config();
+  ADC_Config();
+  NVIC_Config();
+
+  ADC_SoftwareStartConv(ADC1); // Start conversion by software.
   
-  if (TimingDelay == 0x00)
-  {
-    /* Write PASS code at last word in the flash memory */
-    FLASH_ProgramWord(TESTRESULT_ADDRESS, ALLTEST_PASS);
-
-    SystemInit();
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
-    GPIO_Output_Config();
-    GPIO_Input_Config();
-    ADC_Config();
-    NVIC_Config();
-
-    GPIO_ResetBits(GPIOG, GPIO_Pin_6); // LEDs are emitted.
-    ADC_SoftwareStartConv(ADC1); // Start conversion by software.
-    
-    while (1) {
-        GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-        ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
-        ConvertedValue = ADC_GetConversionValue(ADC1);
-        Delay(300);
-    }
+  while (1) {
+      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+      ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
+      ConvertedValue = ADC_GetConversionValue(ADC1);
+      Delay(100);
   }
-  else{}
 }
 
 /**
