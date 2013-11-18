@@ -146,6 +146,16 @@ void ADC_IRQHandler(void)
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
 
+  static int flag=0;
+  if(count%3==0){
+        if(flag==0)
+                STM_EVAL_LEDOn(LED4), flag=1;
+        else
+                STM_EVAL_LEDOff(LED4), flag=0;
+
+  }
+
+
   ConvertedValue=ADC_GetConversionValue(ADC1);
  
   return;
