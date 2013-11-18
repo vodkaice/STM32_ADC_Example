@@ -77,28 +77,36 @@ GPIO_Init(GPIOE, &GPIO_InitStructure);      //調用IO初始化函數
 
 void ADC_Config(void)
 {
-ADC_InitTypeDef ADC_InitStructure;
-ADC_CommonInitTypeDef ADC_CommonInitStructure;
-//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //開ADC時鐘
-RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);//ADC1 is connected to APB2 peripheral bus
-RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
-ADC_DeInit();
-ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;  //精度為12位           
-ADC_InitStructure.ADC_ScanConvMode = DISABLE;   //掃瞄轉換模式失能,單通道不用
-ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;  //連續轉換使能
-ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; //不用外部觸發，軟件觸發轉換
-ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
-ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; //數據右對齊，低位元組對齊
-ADC_InitStructure.ADC_NbrOfConversion = 1;    //規定了順序進行規則轉換的ADC通道的數目
-ADC_Init(ADC1, &ADC_InitStructure);      
-ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;    //獨立模式
-ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; //分頻為4，f(ADC3)=21M
-ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; //失能DMA_MODE
-ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;//兩次採樣間隔5個週期
-ADC_CommonInit(&ADC_CommonInitStructure);
-ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); //規則通道配置，1表示規則組採樣順序
-ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
-ADC_Cmd(ADC1, ENABLE);  //使能ADC3
+    ADC_InitTypeDef ADC_InitStructure; // Structure for single-ADC configuration
+    ADC_CommonInitTypeDef ADC_CommonInitStructure; // Structure for inter-ADC configuration
+
+    // Clock configuration
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); // ADC1 is connected to APB2 peripheral bus
+    RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE); // Clock for the ADC port!! (do not forget it)
+
+    // ADC structure configuration
+    ADC_DeInit(); // Reset all parameters to their default values
+    ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b; // Input voltage is converted into a 12-bit number whose maximum value is 4095
+    ADC_InitStructure.ADC_ScanConvMode = DISABLE; // No scan (only one channel)
+    ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; // the conversion is continuous (periodic)
+    ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; // no external trigger for conversion
+    ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1; // use timer 1 capture/compare channel 1 for external trigger (may be forced)
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; // converted data will be shifted to the right
+    ADC_InitStructure.ADC_NbrOfConversion = 1; // Number of used ADC channels
+    ADC_Init(ADC1, &ADC_InitStructure);      
+
+    // ADC common structure configuration
+    ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent; // independent mode
+    ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; // f(ADC3)=84/4=21MHz
+    ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; // disable DMA_MODE
+    ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles; // there are 5 clock cycles between 2 samplings
+    ADC_CommonInit(&ADC_CommonInitStructure);
+
+    // use channel 10 from ADC1, with sample time 15 cycles
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
+
+    ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
+    ADC_Cmd(ADC1, ENABLE);
 }
 
 void NVIC_Config()
@@ -124,7 +132,7 @@ void DMA2_Stream0_IRQHandler(void)
 /**名稱：ADC看門狗中斷服務程序
   *作用：ADC輸入超過界限產生中斷，並點亮LED
   */
-volatile int count_interrupt = 10;
+volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
 ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
@@ -178,27 +186,27 @@ int main(void)
     /* Write PASS code at last word in the flash memory */
     FLASH_ProgramWord(TESTRESULT_ADDRESS, ALLTEST_PASS);
 
-/* try to use dma*/
     SystemInit();
-    RCC_AHB1PeriphClockCmd(  RCC_AHB1Periph_GPIOE , ENABLE );
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
     GPIO_PIN_INIT();
     adc_configure();
     GPIO_Config();
     GPIO_PIN_INIT();
     ADC_Config();
     NVIC_Config();
-    GPIO_ResetBits(GPIOG, GPIO_Pin_6); //關閉LED
-    ADC_SoftwareStartConv(ADC1);
+
+    GPIO_ResetBits(GPIOG, GPIO_Pin_6); // LEDs are emitted.
+    ADC_SoftwareStartConv(ADC1); // Start conversion by software.
     
-    while (1)
-     {
-      int o=count_interrupt;      
-      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-      ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
-      while(count_interrupt==o);
-      ConvertedValue = ADC_GetConversionValue(ADC1);
-      Delay(300);
-     }
+    while (1) {
+        int o = count_interrupt;      
+
+        GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+        ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
+        while(count_interrupt == o); // Waiting for interrupt.
+        ConvertedValue = ADC_GetConversionValue(ADC1);
+        Delay(300);
+    }
 
 /* Try to test ADC.*/
   }
