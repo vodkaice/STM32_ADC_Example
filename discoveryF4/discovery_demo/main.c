@@ -149,9 +149,9 @@ void ADC_IRQHandler(void)
   static int flag=0;
   if(count%3==0){
 	if(flag==0)
-		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
+		STM_EVAL_LEDOn(LED4), flag=1;
 	else
-		GPIO_ResetBits(GPIOE, GPIO_Pin_8), flag=0;
+		STM_EVAL_LEDOff(LED4), flag=0;
 
   } 
  
