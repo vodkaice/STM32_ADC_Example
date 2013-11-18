@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-int ConvertedValue = 0; //Converted value readed from ADC
+volatile int ConvertedValue = 0; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -132,25 +132,17 @@ void GPIO_Input_Config(void)
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
-volatile int count_interrupt = 10; // count-down counter for interrupts
+//volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
-ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+  ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
   uint16_t sum = 0;
       
   register int i;
   for(i=0; i<12; ++i)
-    sum|=(count_interrupt & (1 << i)?USING_PIN[i]:0);
-    //sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
-  
-  if (count_interrupt >0)
-  {
+    sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
     GPIO_SetBits(GPIOE, sum);
-  }
-  count_interrupt--;
   return;
-  Delay(100);
-  GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
 }
 
 /**
@@ -182,11 +174,8 @@ int main(void)
     ADC_SoftwareStartConv(ADC1); // Start conversion by software.
     
     while (1) {
-        int o = count_interrupt;      
-
         GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
         ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
-        while(count_interrupt == o); // Waiting for interrupt.
         ConvertedValue = ADC_GetConversionValue(ADC1);
         Delay(300);
     }
