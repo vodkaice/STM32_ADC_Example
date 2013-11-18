@@ -53,26 +53,10 @@ static uint32_t Demo_USBConfig(void);
 //static void TIM4_Config(void);
 
 /* Private functions ---------------------------------------------------------*/
-int adc_convert();
-void adc_configure();
-void GPIO_PIN_INIT(void);
+void GPIO_Config(void);
 
 inline int conv2temp(uint16_t value){
   return ( ( ( ( value * 2960 ) / 4096 ) - 760 ) / ( 25 / 10 ) ) + 25;
-}
-
-void GPIO_Config(void)
-{
-GPIO_InitTypeDef GPIO_InitStructure;
-/* 使能GPIOC\GPIOF\GPIOG時鐘*/
-RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOE | RCC_AHB1Periph_GPIOG | RCC_AHB1Periph_GPIOF, ENABLE);
-GPIO_StructInit(&GPIO_InitStructure);
-/* 初始化GPIOG的Pin_6為LED輸出 */
-GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;     //指定第六引腳
-GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;    //模式為輸出
-GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;   //頻率為快速
-//GPIO_Init(GPIOG, &GPIO_InitStructure);      //調用IO初始化函數
-GPIO_Init(GPIOE, &GPIO_InitStructure);      //調用IO初始化函數
 }
 
 void ADC_Config(void)
@@ -112,26 +96,43 @@ void ADC_Config(void)
 void NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
-  /* ADC中斷配置 */
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);        //嵌套優先級分組為 1
-  NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;           //嵌套通道為ADC_IRQn
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; //搶佔優先級為 1
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;    //響應優先級為 2
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //通道中斷使能
+  /* ADC interrupt configure */
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+  NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
 
-void DMA2_Stream0_IRQHandler(void)
-{
-    if (DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0) != RESET)
-     {
-      DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0);
-      /*添加用戶代碼*/
-     }
+void GPIO_Output_Config(void){
+  GPIO_InitTypeDef GPIO_InitStructure;
+  
+  GPIO_PinAFConfig(GPIOE, GPIO_PinSource3|GPIO_PinSource4|GPIO_PinSource5|GPIO_PinSource6|GPIO_PinSource7|GPIO_PinSource8|GPIO_PinSource9|GPIO_PinSource10|GPIO_PinSource11|GPIO_PinSource12|GPIO_PinSource13|GPIO_PinSource14, GPIO_AF_TIM3);
+  
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init( GPIOE, &GPIO_InitStructure ); 
 }
-/**名稱：ADC看門狗中斷服務程序
-  *作用：ADC輸入超過界限產生中斷，並點亮LED
-  */
+
+void GPIO_Input_Config(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  // Set GPIO clock
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+  GPIO_StructInit(&GPIO_InitStructure);
+
+  //Analog input pin configuration
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+}
+
 volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
@@ -151,11 +152,7 @@ ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
   return;
   Delay(100);
   GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-//  Delay(100);
 }
- 
-
-//static uint16_t testing=10;
 
 /**
   * @brief  Main program.
@@ -165,33 +162,20 @@ ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
 int main(void)
 {
   RCC_ClocksTypeDef RCC_Clocks;
-
-  /* Initialize LEDs and User_Button on STM32F4-Discovery --------------------*/
-  STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_EXTI); 
-  
-  STM_EVAL_LEDInit(LED4);
   
   /* SysTick end of count event each 10ms */
   RCC_GetClocksFreq(&RCC_Clocks);
   SysTick_Config(RCC_Clocks.HCLK_Frequency / 100);
   
-    /* Turn on LEDs available on STM32F4-Discovery ---------------------------*/
-  STM_EVAL_LEDOn(LED4);
-
   if (TimingDelay == 0x00)
   {
-    /* Turn off LEDs available on STM32F4-Discovery ------------------------*/
-    STM_EVAL_LEDOff(LED4);
-    
     /* Write PASS code at last word in the flash memory */
     FLASH_ProgramWord(TESTRESULT_ADDRESS, ALLTEST_PASS);
 
     SystemInit();
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
-    GPIO_PIN_INIT();
-    adc_configure();
-    GPIO_Config();
-    GPIO_PIN_INIT();
+    GPIO_Output_Config();
+    GPIO_Input_Config();
     ADC_Config();
     NVIC_Config();
 
@@ -207,62 +191,8 @@ int main(void)
         ConvertedValue = ADC_GetConversionValue(ADC1);
         Delay(300);
     }
-
-/* Try to test ADC.*/
   }
   else{}
-}
- 
-void adc_configure(){
-  ADC_InitTypeDef ADC_init_structure; //Structure for adc confguration
-  GPIO_InitTypeDef GPIO_initStructre; //Structure for analog input pin
-
-  //Clock configuration
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);//ADC1 is connected to APB2 peripheral bus
-  RCC_AHB1PeriphClockCmd(RCC_AHB1ENR_GPIOCEN, ENABLE);//Clock for the ADC port!! Do not forget about this one ;)
-
-  //Analog input pin configuration
-  GPIO_initStructre.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
-  GPIO_initStructre.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
-  GPIO_initStructre.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
-  GPIO_Init(GPIOC, &GPIO_initStructre);
-
-  //ADC structure configuration
-  ADC_DeInit();//reset all parameters to their default values
-  ADC_init_structure.ADC_DataAlign = ADC_DataAlign_Right;//converted data will be shifted to right
-  ADC_init_structure.ADC_Resolution = ADC_Resolution_12b;//Input voltage is converted into a 12-bit number whose maximum value is 4095
-  ADC_init_structure.ADC_ContinuousConvMode = ENABLE; //the conversion is continuous, the input data is converted more than once
-  ADC_init_structure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;//use timer 1 capture/compare channel 1 for external trigger
-  ADC_init_structure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;//no trigger for conversion
-  ADC_init_structure.ADC_NbrOfConversion = 1;//Number of used ADC channels
-  ADC_init_structure.ADC_ScanConvMode = DISABLE;//No scan (only one channel)
-  ADC_Init(ADC1, &ADC_init_structure);
-
-  ADC_TempSensorVrefintCmd(ENABLE);
-
-  // use channel 16 from ADC1, with sample time 144 cycles
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_144Cycles);
-
-  ADC_Cmd(ADC1, ENABLE);
-}
-
-int adc_convert(){
- ADC_SoftwareStartConv(ADC1);//Start the conversion
- while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC));//Processing the conversion
- return ADC_GetConversionValue(ADC1); //Return the converted data
-}
-
-void GPIO_PIN_INIT(void){
-    GPIO_InitTypeDef GPIO_InitStructure;
-    
-    GPIO_PinAFConfig(GPIOE, GPIO_PinSource3|GPIO_PinSource4|GPIO_PinSource5|GPIO_PinSource6|GPIO_PinSource7|GPIO_PinSource8|GPIO_PinSource9|GPIO_PinSource10|GPIO_PinSource11|GPIO_PinSource12|GPIO_PinSource13|GPIO_PinSource14, GPIO_AF_TIM3);
-    
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-    GPIO_Init( GPIOE, &GPIO_InitStructure ); 
 }
 
 /**
