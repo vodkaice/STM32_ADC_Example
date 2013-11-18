@@ -141,7 +141,8 @@ void ADC_IRQHandler(void)
   register int i;
   for(i=0; i<12; ++i)
     sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
-    GPIO_SetBits(GPIOE, sum);
+  
+  GPIO_SetBits(GPIOE, sum);
   return;
 }
 
