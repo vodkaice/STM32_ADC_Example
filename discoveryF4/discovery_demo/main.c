@@ -173,7 +173,7 @@ void ADC_IRQHandler(void)
 		ADC_ClearITPendingBit(ADC3, ADC_IT_EOC);
 	}
 
-	ConvertedValue=ADC_GetConversionValue(ADC1); //Return the converted data
+	ConvertedValue=ADC_GetConversionValue(ADC3); //Return the converted data
 }
 
 
