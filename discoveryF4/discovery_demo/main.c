@@ -145,7 +145,7 @@ void ADC_IRQHandler(void)
   }
 
   static int flag=0;
-  if(count%3==0){
+  if(count%100000==0){
 	if(flag==0)
 		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
 	else
