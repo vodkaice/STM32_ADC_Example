@@ -144,6 +144,7 @@ void ADC_IRQHandler(void)
 
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
+   ConvertedValue = ADC_GetConversionValue(ADC1);
   }
 
   static int flag=0;
@@ -202,7 +203,6 @@ int main(void)
       GPIO_SetBits(GPIOE, sum);
 
       count--;
-      //ConvertedValue = ADC_GetConversionValue(ADC1);
       Delay(300);
   }
 }
