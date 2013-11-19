@@ -183,6 +183,8 @@ int main(void)
   ADC_Config();
   NVIC_Config();
 
+  STM_EVAL_LEDOn(LED5);
+
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
   
   int count=10;
