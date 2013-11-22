@@ -70,12 +70,12 @@ void ADC_Config(void)
     // ADC structure configuration
     ADC_DeInit(); // Reset all parameters to their default values
     ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b; // Input voltage is converted into a 12-bit number whose maximum value is 4095
-    ADC_InitStructure.ADC_ScanConvMode = DISABLE; // No scan (only one channel)
+    ADC_InitStructure.ADC_ScanConvMode = ENABLE; // No scan (only one channel)
     ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; // the conversion is continuous (periodic)
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; // no external trigger for conversion
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1; // use timer 1 capture/compare channel 1 for external trigger (may be forced)
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; // converted data will be shifted to the right
-    ADC_InitStructure.ADC_NbrOfConversion = 1; // Number of used ADC channels
+    ADC_InitStructure.ADC_NbrOfConversion = 2; // Number of used ADC channels
     ADC_Init(ADC1, &ADC_InitStructure);      
 
     // ADC common structure configuration
@@ -87,6 +87,7 @@ void ADC_Config(void)
 
     // use channel 10 from ADC1, with sample time 15 cycles
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 2, ADC_SampleTime_15Cycles);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
 
@@ -101,7 +102,7 @@ void NVIC_Config()
   NVIC_InitTypeDef NVIC_InitStructure;
 
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-  NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream0_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream4_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -140,6 +141,7 @@ void GPIO_Input_Config(void)
 
   //Analog input pin configuration
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
   GPIO_Init(GPIOC, &GPIO_InitStructure);
@@ -150,32 +152,33 @@ void DMA_Config(){
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
 	
-	DMA_DeInit(DMA2_Stream0);
+	DMA_DeInit(DMA2_Stream4);
 	DMA_StructInit(&DMA_InitStructure);
-	DMA_InitStructure.DMA_Channel = DMA_Channel_2;
+	DMA_InitStructure.DMA_Channel = DMA_Channel_0;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) ADC1_DR_Address;
 	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCoverValue;
 
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 
-	DMA_InitStructure.DMA_BufferSize = 1;
+	DMA_InitStructure.DMA_BufferSize = 2;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
 
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-	DMA_Init(DMA2_Stream0, &DMA_InitStructure);
-	DMA_Cmd(DMA2_Stream0, ENABLE);
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_Init(DMA2_Stream4, &DMA_InitStructure);
+	DMA_Cmd(DMA2_Stream4, ENABLE);
 
-	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
+	DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
 }
 
-void DMA2_Stream0_IRQHandler(){
-	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0) != RESET){
-		DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0);
+void DMA2_Stream4_IRQHandler(){
+	if(DMA_GetITStatus(DMA2_Stream4, DMA_IT_TCIF0) != RESET){
+		DMA_ClearITPendingBit(DMA2_Stream4, DMA_IT_TCIF0);
 	}
-
+  GPIO_SetBits(GPIOE, GPIO_Pin_9);
 	ConvertedValue=0x5;		
 }
 
@@ -188,7 +191,6 @@ void ADC_IRQHandler(void)
 
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
-   //ConvertedValue = ADC_GetConversionValue(ADC1);
   }
 
   static int flag=0;
