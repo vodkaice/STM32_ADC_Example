@@ -22,10 +22,10 @@
 #define ALLTEST_PASS               0x00000000
 #define ALLTEST_FAIL               0x55555555
 #define BUFFERSIZE 128
-#define ADC3_DR_Addr   ((uint32_t)0x4001224C)
+#define ADC1_DR_Address   ((uint32_t)0x4001204C)
  
 uint16_t ADCConvertedValues[BUFFERSIZE];
-__IO uint16_t ADCoverVaule;
+__IO uint16_t ADCoverValue;
 uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-volatile int ConvertedValue = 0; //Converted value readed from ADC
+volatile int ConvertedValue = 4; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -89,12 +89,24 @@ void ADC_Config(void)
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
+
+    ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
+    ADC_DMACmd(ADC1, ENABLE);
+
     ADC_Cmd(ADC1, ENABLE);
 }
 
 void NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
+
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+  NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream0_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
   /* ADC interrupt configure */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
   NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;
@@ -102,6 +114,7 @@ void NVIC_Config()
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
+
 }
 
 void GPIO_Output_Config(void){
@@ -132,6 +145,39 @@ void GPIO_Input_Config(void)
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
+void DMA_Config(){
+	DMA_InitTypeDef DMA_InitStructure;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+	
+	DMA_DeInit(DMA2_Stream0);
+	DMA_StructInit(&DMA_InitStructure);
+	DMA_InitStructure.DMA_Channel = DMA_Channel_2;
+	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) ADC1_DR_Address;
+	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCoverValue;
+
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+
+	DMA_InitStructure.DMA_BufferSize = 1;
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+	DMA_Init(DMA2_Stream0, &DMA_InitStructure);
+	DMA_Cmd(DMA2_Stream0, ENABLE);
+
+	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
+}
+
+void DMA_IRQHandler(){
+	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0) != RESET){
+		DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0);
+		ConvertedValue=0x5;		
+	}
+}
+
 //volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
@@ -141,8 +187,9 @@ void ADC_IRQHandler(void)
 
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
-   ConvertedValue = ADC_GetConversionValue(ADC1);
+   //ConvertedValue = ADC_GetConversionValue(ADC1);
   }
+  ConvertedValue=0x9;
 
   static int flag=0;
   if(count%100000==0){
@@ -178,28 +225,27 @@ int main(void)
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
   GPIO_Output_Config();
   GPIO_Input_Config();
+  
+  DMA_Config();
   ADC_Config();
   NVIC_Config();
 
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
 
-  int count=10;
   while (1) {
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       
-      if(count<0) count=10;
 
       
       uint16_t sum = 0;
       
       register int i;
       for(i=0; i<4; ++i)
-         sum|=(count & (1 << i)?USING_PIN[i]:0);
+         sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
 
-      count--;
       Delay(300);
   }
 }
