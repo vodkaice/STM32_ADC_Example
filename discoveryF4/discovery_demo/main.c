@@ -171,11 +171,12 @@ void DMA_Config(){
 	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
 }
 
-void DMA_IRQHandler(){
+void DMA2_Stream0_IRQHandler(){
 	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0) != RESET){
 		DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0);
-		ConvertedValue=0x5;		
 	}
+
+	ConvertedValue=0x5;		
 }
 
 //volatile int count_interrupt = 10; // count-down counter for interrupts
@@ -189,7 +190,6 @@ void ADC_IRQHandler(void)
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
    //ConvertedValue = ADC_GetConversionValue(ADC1);
   }
-  ConvertedValue=0x9;
 
   static int flag=0;
   if(count%100000==0){
