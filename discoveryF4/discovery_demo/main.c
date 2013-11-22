@@ -175,11 +175,18 @@ void DMA_Config(){
 }
 
 void DMA2_Stream4_IRQHandler(){
+  static int flag2=0;
+  static int count2=0;
+  count2++;
 	if(DMA_GetITStatus(DMA2_Stream4, DMA_IT_TCIF0) != RESET){
 		DMA_ClearITPendingBit(DMA2_Stream4, DMA_IT_TCIF0);
 	}
-  GPIO_SetBits(GPIOE, GPIO_Pin_9);
-	ConvertedValue=0x5;		
+  if(count2%1000000==0){
+    if(flag2==0)
+      GPIO_SetBits(GPIOE, GPIO_Pin_9), flag2=1;
+    else
+      GPIO_ResetBits(GPIOE, GPIO_Pin_9), flag2=0;
+  }
 }
 
 //volatile int count_interrupt = 10; // count-down counter for interrupts
@@ -187,20 +194,19 @@ void ADC_IRQHandler(void)
 {
 
   static int count=0;
-  count++;  
+  count++;
 
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
 
   static int flag=0;
-  if(count%100000==0){
-	if(flag==0)
-		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
-	else
-		GPIO_ResetBits(GPIOE, GPIO_Pin_8), flag=0;
-
-  } 
+  if(count%1000000==0){
+  	if(flag==0)
+  		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
+  	else
+  		GPIO_ResetBits(GPIOE, GPIO_Pin_8), flag=0;
+  }
  
   return;
 }
