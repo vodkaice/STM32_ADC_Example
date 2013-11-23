@@ -95,7 +95,7 @@ void ADC_Config(void)
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
 
     ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
-    ADC_DMACmd(ADC1, ENABLE);
+    //ADC_DMACmd(ADC1, ENABLE);
 
     ADC_Cmd(ADC1, ENABLE);
 }
@@ -174,7 +174,7 @@ void DMA_Config(){
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 
 	DMA_Init(DMA2_Stream4, &DMA_InitStructure);
-//	DMA_Cmd(DMA2_Stream4, ENABLE);
+	DMA_Cmd(DMA2_Stream4, ENABLE);
 
 	//DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
 }
@@ -237,7 +237,7 @@ int main(void)
   GPIO_Output_Config();
   GPIO_Input_Config();
   
-  DMA_Config();
+  //DMA_Config();
   ADC_Config();
   NVIC_Config();
 
