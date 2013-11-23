@@ -37,7 +37,7 @@ uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
   
-uint16_t PrescalerValue = 0;
+uint16_t PrescalerValue =0;
 
 __IO uint32_t TimingDelay;
 __IO uint8_t DemoEnterCondition = 0x00;
@@ -87,7 +87,10 @@ void ADC_Config(void)
 
     // use channel 10 from ADC1, with sample time 15 cycles
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 2, ADC_SampleTime_15Cycles);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 2, ADC_SampleTime_15Cycles);
+
+    // Enable temperature sensor
+    ADC_TempSensorVrefintCmd(ENABLE);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
 
@@ -101,12 +104,13 @@ void NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
 
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+  /*NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
   NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream4_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
+  */
 
   /* ADC interrupt configure */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
@@ -156,7 +160,7 @@ void DMA_Config(){
 	DMA_StructInit(&DMA_InitStructure);
 	DMA_InitStructure.DMA_Channel = DMA_Channel_0;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) ADC1_DR_Address;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCoverValue;
+	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCConvertedValues[0];
 
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 
@@ -167,14 +171,16 @@ void DMA_Config(){
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+
 	DMA_Init(DMA2_Stream4, &DMA_InitStructure);
 	DMA_Cmd(DMA2_Stream4, ENABLE);
 
-	DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
+	//DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
 }
-
+/*
 void DMA2_Stream4_IRQHandler(){
+  DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, DISABLE);
   static int flag2=0;
   static int count2=0;
   count2++;
@@ -187,8 +193,9 @@ void DMA2_Stream4_IRQHandler(){
     else
       GPIO_ResetBits(GPIOE, GPIO_Pin_9), flag2=0;
   }
+  ConvertedValue=0x5;
 }
-
+*/
 //volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
@@ -200,16 +207,12 @@ void ADC_IRQHandler(void)
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
 
-  static int flag=0;
   if(count%1000000==0){
-  	if(flag==0)
-  		GPIO_SetBits(GPIOE, GPIO_Pin_8), flag=1;
-  	else
-  		GPIO_ResetBits(GPIOE, GPIO_Pin_8), flag=0;
-  }
- 
-  return;
+ 	ConvertedValue=ADCConvertedValues[0];
+  }  
+
 }
+ 
 
 /**
   * @brief  Main program.
@@ -241,10 +244,13 @@ int main(void)
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
 
+  int count=10;
+
+
   while (1) {
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       
-
+	if(count<0) count=10;
       
       uint16_t sum = 0;
       
@@ -253,7 +259,7 @@ int main(void)
          sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
-
+	count--;
       Delay(300);
   }
 }
