@@ -70,12 +70,12 @@ void ADC_Config(void)
     // ADC structure configuration
     ADC_DeInit(); // Reset all parameters to their default values
     ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b; // Input voltage is converted into a 12-bit number whose maximum value is 4095
-    ADC_InitStructure.ADC_ScanConvMode = ENABLE; // No scan (only one channel)
+    ADC_InitStructure.ADC_ScanConvMode = DISABLE; // No scan (only one channel)
     ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; // the conversion is continuous (periodic)
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; // no external trigger for conversion
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1; // use timer 1 capture/compare channel 1 for external trigger (may be forced)
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; // converted data will be shifted to the right
-    ADC_InitStructure.ADC_NbrOfConversion = 2; // Number of used ADC channels
+    ADC_InitStructure.ADC_NbrOfConversion = 1; // Number of used ADC channels
     ADC_Init(ADC1, &ADC_InitStructure);      
 
     // ADC common structure configuration
@@ -87,7 +87,7 @@ void ADC_Config(void)
 
     // use channel 10 from ADC1, with sample time 15 cycles
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 2, ADC_SampleTime_15Cycles);
+    //ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_15Cycles);
 
     // Enable temperature sensor
     ADC_TempSensorVrefintCmd(ENABLE);
@@ -164,17 +164,17 @@ void DMA_Config(){
 
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 
-	DMA_InitStructure.DMA_BufferSize = 2;
+	DMA_InitStructure.DMA_BufferSize = 1;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
 
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 
 	DMA_Init(DMA2_Stream4, &DMA_InitStructure);
-	DMA_Cmd(DMA2_Stream4, ENABLE);
+//	DMA_Cmd(DMA2_Stream4, ENABLE);
 
 	//DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
 }
@@ -208,7 +208,7 @@ void ADC_IRQHandler(void)
   }
 
   if(count%1000000==0){
- 	ConvertedValue=ADCConvertedValues[0];
+ 	ConvertedValue=ADC_GetConversionValue(ADC1);
   }  
 
 }
@@ -255,7 +255,7 @@ int main(void)
       uint16_t sum = 0;
       
       register int i;
-      for(i=0; i<4; ++i)
+      for(i=0; i<12; ++i)
          sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
