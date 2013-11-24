@@ -25,7 +25,7 @@
 #define ADC1_DR_Address   ((uint32_t)0x4001204C)
  
 uint16_t ADCConvertedValues[BUFFERSIZE];
-__IO uint16_t ADCoverValue;
+__IO uint16_t ADCoverVaule;
 uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
 
 /* Private macro -------------------------------------------------------------*/
@@ -37,7 +37,7 @@ uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
   
-uint16_t PrescalerValue =0;
+uint16_t PrescalerValue = 0;
 
 __IO uint32_t TimingDelay;
 __IO uint8_t DemoEnterCondition = 0x00;
@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-volatile int ConvertedValue = 4; //Converted value readed from ADC
+volatile int ConvertedValue = 0; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -57,6 +57,35 @@ static uint32_t Demo_USBConfig(void);
 inline int conv2temp(uint16_t value){
   return ( ( ( ( value * 2960 ) / 4096 ) - 760 ) / ( 25 / 10 ) ) + 25;
 }
+
+void DMA_Config(){
+        DMA_InitTypeDef DMA_InitStructure;
+
+        RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+
+        DMA_DeInit(DMA2_Stream4);
+        DMA_StructInit(&DMA_InitStructure);
+        DMA_InitStructure.DMA_Channel = DMA_Channel_0;
+        DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) ADC1_DR_Address;
+        DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCConvertedValues[0];
+
+        DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+
+        DMA_InitStructure.DMA_BufferSize = 1;
+        DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+
+        DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+        DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+        DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+        DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+
+        DMA_Init(DMA2_Stream4, &DMA_InitStructure);
+        DMA_Cmd(DMA2_Stream4, ENABLE);
+
+        //DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
+}
+
 
 void ADC_Config(void)
 {
@@ -80,38 +109,25 @@ void ADC_Config(void)
 
     // ADC common structure configuration
     ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent; // independent mode
-    ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; // f(ADC1)=84/4=21MHz
+    ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4; // f(ADC3)=84/4=21MHz
     ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled; // disable DMA_MODE
     ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles; // there are 5 clock cycles between 2 samplings
     ADC_CommonInit(&ADC_CommonInitStructure);
 
     // use channel 10 from ADC1, with sample time 15 cycles
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
-    //ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_15Cycles);
-
-    // Enable temperature sensor
-    ADC_TempSensorVrefintCmd(ENABLE);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
-
+    
     ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
-    //ADC_DMACmd(ADC1, ENABLE);
 
+    ADC_DMACmd(ADC1, ENABLE);
     ADC_Cmd(ADC1, ENABLE);
 }
 
 void NVIC_Config()
 {
   NVIC_InitTypeDef NVIC_InitStructure;
-
-  /*NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-  NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream4_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-  */
-
   /* ADC interrupt configure */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
   NVIC_InitStructure.NVIC_IRQChannel = ADC_IRQn;
@@ -119,7 +135,6 @@ void NVIC_Config()
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-
 }
 
 void GPIO_Output_Config(void){
@@ -145,75 +160,22 @@ void GPIO_Input_Config(void)
 
   //Analog input pin configuration
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;//The channel 10 is connected to PC0
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN; //The PC0 pin is configured in analog mode
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; //We don't need any pull up or pull down
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
-void DMA_Config(){
-	DMA_InitTypeDef DMA_InitStructure;
-
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-	
-	DMA_DeInit(DMA2_Stream4);
-	DMA_StructInit(&DMA_InitStructure);
-	DMA_InitStructure.DMA_Channel = DMA_Channel_0;
-	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) ADC1_DR_Address;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) &ADCConvertedValues[0];
-
-	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-
-	DMA_InitStructure.DMA_BufferSize = 1;
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
-
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-
-	DMA_Init(DMA2_Stream4, &DMA_InitStructure);
-	DMA_Cmd(DMA2_Stream4, ENABLE);
-
-	//DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, ENABLE);
-}
-/*
-void DMA2_Stream4_IRQHandler(){
-  DMA_ITConfig(DMA2_Stream4, DMA_IT_TC, DISABLE);
-  static int flag2=0;
-  static int count2=0;
-  count2++;
-	if(DMA_GetITStatus(DMA2_Stream4, DMA_IT_TCIF0) != RESET){
-		DMA_ClearITPendingBit(DMA2_Stream4, DMA_IT_TCIF0);
-	}
-  if(count2%1000000==0){
-    if(flag2==0)
-      GPIO_SetBits(GPIOE, GPIO_Pin_9), flag2=1;
-    else
-      GPIO_ResetBits(GPIOE, GPIO_Pin_9), flag2=0;
-  }
-  ConvertedValue=0x5;
-}
-*/
 //volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
-
   static int count=0;
   count++;
-
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
-
-  if(count%1000000==0){
- 	ConvertedValue=ADC_GetConversionValue(ADC1);
-  }  
-
+  if(count%1000000==0)
+  	ConvertedValue=ADCConvertedValues[1];
 }
- 
-
 /**
   * @brief  Main program.
   * @param  None
@@ -236,21 +198,16 @@ int main(void)
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
   GPIO_Output_Config();
   GPIO_Input_Config();
-  
-  //DMA_Config();
+  DMA_Config();
   ADC_Config();
   NVIC_Config();
 
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
-  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
-
-  int count=10;
-
-
+  
+      ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
   while (1) {
-      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       
-	if(count<0) count=10;
       
       uint16_t sum = 0;
       
@@ -259,8 +216,9 @@ int main(void)
          sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
-	count--;
-      Delay(300);
+
+      //ConvertedValue = ADC_GetConversionValue(ADC1);
+      Delay(100);
   }
 }
 
