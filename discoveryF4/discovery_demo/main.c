@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-volatile int ConvertedValue = 0; //Converted value readed from ADC
+volatile int ConvertedValue = 0x4; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -71,9 +71,9 @@ void DMA_Config(){
 
         DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
 
-        DMA_InitStructure.DMA_BufferSize = 1;
+        DMA_InitStructure.DMA_BufferSize = 2;
         DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+        DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 
         DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
         DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
@@ -99,12 +99,12 @@ void ADC_Config(void)
     // ADC structure configuration
     ADC_DeInit(); // Reset all parameters to their default values
     ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b; // Input voltage is converted into a 12-bit number whose maximum value is 4095
-    ADC_InitStructure.ADC_ScanConvMode = DISABLE; // No scan (only one channel)
+    ADC_InitStructure.ADC_ScanConvMode = ENABLE; // No scan (only one channel)
     ADC_InitStructure.ADC_ContinuousConvMode = ENABLE; // the conversion is continuous (periodic)
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None; // no external trigger for conversion
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1; // use timer 1 capture/compare channel 1 for external trigger (may be forced)
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; // converted data will be shifted to the right
-    ADC_InitStructure.ADC_NbrOfConversion = 1; // Number of used ADC channels
+    ADC_InitStructure.ADC_NbrOfConversion = 2; // Number of used ADC channels
     ADC_Init(ADC1, &ADC_InitStructure);      
 
     // ADC common structure configuration
@@ -114,8 +114,12 @@ void ADC_Config(void)
     ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles; // there are 5 clock cycles between 2 samplings
     ADC_CommonInit(&ADC_CommonInitStructure);
 
+    //Enable temperature sensor
+    ADC_TempSensorVrefintCmd(ENABLE);
+
     // use channel 10 from ADC1, with sample time 15 cycles
     ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 2, ADC_SampleTime_15Cycles);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
     
@@ -140,9 +144,9 @@ void NVIC_Config()
 void GPIO_Output_Config(void){
   GPIO_InitTypeDef GPIO_InitStructure;
   
-  GPIO_PinAFConfig(GPIOE, GPIO_PinSource3|GPIO_PinSource4|GPIO_PinSource5|GPIO_PinSource6|GPIO_PinSource7|GPIO_PinSource8|GPIO_PinSource9|GPIO_PinSource10|GPIO_PinSource11|GPIO_PinSource12|GPIO_PinSource13|GPIO_PinSource14, GPIO_AF_TIM3);
+  GPIO_PinAFConfig(GPIOE, GPIO_PinSource3|GPIO_PinSource4|GPIO_PinSource5|GPIO_PinSource6|GPIO_PinSource7|GPIO_PinSource8|GPIO_PinSource9|GPIO_PinSource10|GPIO_PinSource11|GPIO_PinSource12|GPIO_PinSource13|GPIO_PinSource14|GPIO_PinSource15, GPIO_AF_TIM3);
   
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;            // Alt Function - Push Pull
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
@@ -168,13 +172,19 @@ void GPIO_Input_Config(void)
 //volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
-  static int count=0;
+  static int count=0, index=0;
   count++;
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
   }
-  if(count%1000000==0)
-  	ConvertedValue=ADCConvertedValues[1];
+  if(count%1000000==0){
+	if(index%2==0)
+		GPIO_SetBits(GPIOE, GPIO_Pin_15);
+	else
+		GPIO_ResetBits(GPIOE, GPIO_Pin_15);
+	ConvertedValue=ADCConvertedValues[(index++)%2];
+  
+  }
 }
 /**
   * @brief  Main program.
@@ -218,7 +228,7 @@ int main(void)
       GPIO_SetBits(GPIOE, sum);
 
       //ConvertedValue = ADC_GetConversionValue(ADC1);
-      Delay(100);
+      Delay(50);
   }
 }
 
