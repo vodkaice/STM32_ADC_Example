@@ -140,10 +140,10 @@ void ADC_IRQHandler(void)
   count++;  
 
 
-  ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
-
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
+
    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
+   return ;
   }
 
   static int flag=0;
@@ -155,8 +155,8 @@ void ADC_IRQHandler(void)
 
   }
 
-
   ConvertedValue=ADC_GetConversionValue(ADC1);
+
  
   return;
 }
@@ -187,10 +187,9 @@ int main(void)
   NVIC_Config();
 
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
-  
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
   while (1) {
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
-      ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
       
       
       uint16_t sum = 0;
