@@ -172,19 +172,25 @@ void GPIO_Input_Config(void)
 //volatile int count_interrupt = 10; // count-down counter for interrupts
 void ADC_IRQHandler(void)
 {
+
+  //if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
+
+    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
+    //return ;
+  //}
   static int count=0, index=0;
   count++;
-  if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
-   ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
-  }
-  if(count%1000000==0){
+  
+
+
+    if(count%1000000==0){
 	if(index%2==0)
 		GPIO_SetBits(GPIOE, GPIO_Pin_15);
 	else
 		GPIO_ResetBits(GPIOE, GPIO_Pin_15);
 	ConvertedValue=ADCConvertedValues[(index++)%2];
   
-  }
+    }
 }
 /**
   * @brief  Main program.
