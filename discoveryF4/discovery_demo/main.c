@@ -136,26 +136,55 @@ void GPIO_Input_Config(void)
 void ADC_IRQHandler(void)
 {
 
-  static int count=0;
-  count++;  
+  static int count=0, count1=0, count2=0;
 
+  count++;
 
   if(ADC_GetITStatus(ADC1, ADC_IT_EOC) != RESET){
+        //count2++;
+        /*static int flag2=0;
+        if(count2%1000000==0){
+                if(flag2==0)
+                        GPIO_SetBits(GPIOE, GPIO_Pin_10), flag2=1;
+                else
+                        GPIO_ResetBits(GPIOE, GPIO_Pin_10), flag2=0;
 
-   ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
-   return ;
+        }*/
+
+     	ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
+  	//count2++;
+  	/*static int flag2=0;
+  	if(count2%1000000==0){
+        	if(flag2==0)
+                	GPIO_SetBits(GPIOE, GPIO_Pin_10), flag2=1;
+        	else
+                	GPIO_ResetBits(GPIOE, GPIO_Pin_10), flag2=0;
+
+  	}*/
+
+   	return ;
   }
 
-  static int flag=0;
-  if(count%3==0){
-        if(flag==0)
-                STM_EVAL_LEDOn(LED4), flag=1;
+  count1++;
+
+  static int flag=0, flag1=0;
+  if(count1%1000000==0){
+        if(flag1==0)
+                GPIO_SetBits(GPIOE, GPIO_Pin_8), flag1=1;
         else
-                STM_EVAL_LEDOff(LED4), flag=0;
+                GPIO_ResetBits(GPIOE, GPIO_Pin_8), flag1=0;
 
   }
 
-  ConvertedValue=ADC_GetConversionValue(ADC1);
+  if(count%1000000==0){
+        if(flag==0)
+                GPIO_SetBits(GPIOE, GPIO_Pin_9), flag=1;
+        else
+                GPIO_ResetBits(GPIOE, GPIO_Pin_9), flag=0;
+
+  }
+
+  //ConvertedValue=ADC_GetConversionValue(ADC1);
 
  
   return;
@@ -189,9 +218,9 @@ int main(void)
   ADC_SoftwareStartConv(ADC1); // Start conversion by software.
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE); // Ready to handle interrupt.
   while (1) {
-      GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
+      //GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       
-      
+      /*
       uint16_t sum = 0;
       
       register int i;
@@ -199,7 +228,7 @@ int main(void)
          sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
-
+*/
       //ConvertedValue = ADC_GetConversionValue(ADC1);
       Delay(100);
   }
