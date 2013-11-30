@@ -24,7 +24,7 @@
 #define BUFFERSIZE 128
 #define ADC1_DR_Address   ((uint32_t)0x4001204C)
  
-uint16_t ADCConvertedValues[BUFFERSIZE];
+uint32_t ADCConvertedValues[BUFFERSIZE]={0};
 __IO uint16_t ADCoverVaule;
 uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
 
@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-volatile int ConvertedValue = 0x4; //Converted value readed from ADC
+volatile uint32_t ConvertedValue = 0x0F000000U; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -229,7 +229,7 @@ int main(void)
       
       register int i;
       for(i=0; i<12; ++i)
-         sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
+         sum|=(ConvertedValue & (1U << i)?USING_PIN[i]:0);
   
       GPIO_SetBits(GPIOE, sum);
 
