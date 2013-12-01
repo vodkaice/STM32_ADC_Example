@@ -24,7 +24,7 @@
 #define BUFFERSIZE 128
 #define ADC1_DR_Address   ((uint32_t)0x4001204C)
  
-uint16_t ADCConvertedValues[BUFFERSIZE];
+uint32_t ADCConvertedValues[BUFFERSIZE];
 __IO uint16_t ADCoverVaule;
 uint16_t USING_PIN[]={GPIO_Pin_3, GPIO_Pin_4, GPIO_Pin_5, GPIO_Pin_6, GPIO_Pin_7, GPIO_Pin_8, GPIO_Pin_9, GPIO_Pin_10, GPIO_Pin_11, GPIO_Pin_12, GPIO_Pin_13, GPIO_Pin_14};
 
@@ -46,7 +46,7 @@ LIS302DL_InitTypeDef  LIS302DL_InitStruct;
 LIS302DL_FilterConfigTypeDef LIS302DL_FilterStruct;  
 __IO int8_t X_Offset, Y_Offset, Z_Offset  = 0x00;
 uint8_t Buffer[6];
-volatile int ConvertedValue = 0x4; //Converted value readed from ADC
+volatile uint32_t ConvertedValue = 0x4; //Converted value readed from ADC
 
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t Demo_USBConfig(void);
@@ -76,7 +76,7 @@ void DMA_Config(){
         DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 
         DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-        DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+        DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
         DMA_InitStructure.DMA_Priority = DMA_Priority_High;
         DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 
@@ -118,8 +118,8 @@ void ADC_Config(void)
     ADC_TempSensorVrefintCmd(ENABLE);
 
     // use channel 10 from ADC1, with sample time 15 cycles
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 2, ADC_SampleTime_15Cycles);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, ADC_SampleTime_15Cycles);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_16, 1, ADC_SampleTime_15Cycles);
 
     ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE); // not ready for interrupt
     
@@ -188,7 +188,8 @@ void ADC_IRQHandler(void)
 		GPIO_SetBits(GPIOE, GPIO_Pin_15);
 	else
 		GPIO_ResetBits(GPIOE, GPIO_Pin_15);
-	ConvertedValue=ADCConvertedValues[(index++)%2];
+	ConvertedValue=ADCConvertedValues[1];
+	index++;
   
     }
 }
@@ -224,13 +225,23 @@ int main(void)
   while (1) {
       GPIO_ResetBits(GPIOE, GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14);
       
-      
+      // Shows [0..15]
       uint16_t sum = 0;
       
       register int i;
       for(i=0; i<12; ++i)
          sum|=(ConvertedValue & (1 << i)?USING_PIN[i]:0);
-  
+      /////////////////////////////////  
+
+/*
+      // Shows [16..31]
+      uint16_t sum = 0;
+      
+      register int i;
+      for(i=0; i<12; ++i)
+         sum|=(ConvertedValue & (1 << (i+16))?USING_PIN[i]:0);
+      /////////////////////////////////
+*/
       GPIO_SetBits(GPIOE, sum);
 
       //ConvertedValue = ADC_GetConversionValue(ADC1);
