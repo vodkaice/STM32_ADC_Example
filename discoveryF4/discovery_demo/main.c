@@ -75,7 +75,6 @@ int main(void)
     USART1_Configuration();
 
     USART1_puts("USART \r\n");
-    //char *str=malloc(20);
     char str[10];
     /* Initialize LEDs and User_Button on STM32F4-Discovery --------------------*/
     STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_EXTI);
@@ -107,7 +106,6 @@ int main(void)
 	    itoa(ConvertedValue,str);
 	    USART1_puts(str);
 	    USART1_puts("\r\n");
-	    //free(str);
 	    /*----- previous ADC demo by show on LEDs -----*/
             uint16_t sum = 0;
             register int i;
@@ -229,11 +227,13 @@ void USART1_Configuration(void)
 
 void USART1_puts(char* s)
 {
+    /*-- original version --*/
    /* while(*s) {
         while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
         USART_SendData(USART1, *s);
         s++;
     }*/
+    /*-- mini-arm-os version  --*/
     while (*s) {
 	while (!((USART1->SR) & USART_FLAG_TXE));
 	(USART1->DR) = (*s & 0xFF);
